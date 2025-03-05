@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
-import { BakelorIframeBridgeModule } from '@bakelor/iframe-bridge';
+import { ClientBridgeService, ThemeType, ClientConfig } from '@bakelor/iframe-bridge/dist';
+// import { BakelorIframeBridgeModule } from '@bakelor/iframe-bridge/dist';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -18,10 +19,9 @@ import { AppComponent } from './app.component';
     AppRoutingModule,
     FormsModule,
     CommonModule,
-    RouterModule,
-    BakelorIframeBridgeModule
+    RouterModule
   ],
-  providers: [],
+  providers: [ClientBridgeService],
   bootstrap: [AppComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA]
 })

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BrowserModule } from '@angular/platform-browser';
-import { ClientBridgeService, ThemeType, ClientConfig } from '@bakelor/iframe-bridge';
+import { ClientBridgeService,ThemeType,ClientConfig, ScriptInfo } from '@bakelor/iframe-bridge/dist';
 import { FormsModule } from '@angular/forms';
 
 interface Seat {
@@ -27,10 +27,14 @@ interface Table {
 export class AppComponent implements OnInit, OnDestroy {
   title = 'my-angular-project';
   clientConfig: ClientConfig = {
+    appId: 'client-app-id',
     appName: 'Client Application',
     version: '1.0.0',
     theme: ThemeType.LIGHT,
     language: 'en',
+    metaTags: [],
+    script: { src: '', async: true, name: '', version: '', framework: { name: "Angular", version: '' } } as ScriptInfo,
+    timestamp: Date.now(),
     trustedOrigin: 'https://next.navizard.bakelor.com',
     poweredByLabel: 'Powered by Bakelor'
   };
