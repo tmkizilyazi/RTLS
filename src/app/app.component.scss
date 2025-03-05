@@ -1,0 +1,41 @@
+.layout-controls {
+  margin-bottom: 20px;
+  label {
+    margin-right: 10px;
+  }
+  select, input {
+    margin-right: 20px;
+  }
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.table {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  border: 2px solid #000;
+  &.circle {
+    border-radius: 50%;
+  }
+  &.square {
+    border-radius: 0;
+  }
+}
+
+.seat {
+  width: 20px;
+  height: 20px;
+  margin: 5px;
+  background-color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &.occupied {
+    background-color: #f00;
+  }
+}

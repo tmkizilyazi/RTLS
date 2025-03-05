@@ -424,6 +424,26 @@
     </button>
   </div>
 
+  <!-- Layout Controls -->
+  <div class="layout-controls">
+    <label for="table-shape">Table Shape:</label>
+    <select id="table-shape" [(ngModel)]="selectedShape">
+      <option *ngFor="let shape of shapes" [value]="shape">{{ shape }}</option>
+    </select>
+
+    <label for="table-size">Table Size:</label>
+    <input id="table-size" type="number" [(ngModel)]="tableSize" min="1" max="10">
+  </div>
+
+  <!-- Layout -->
+  <div class="layout">
+    <div *ngFor="let table of tables" class="table" [ngClass]="table.shape" [style.width.px]="table.size * 50" [style.height.px]="table.size * 50">
+      <div *ngFor="let seat of table.seats" class="seat" [ngClass]="{'occupied': seat.occupied}">
+        {{ seat.number }}
+      </div>
+    </div>
+  </div>
+
   <!-- Terminal -->
   <div class="terminal" [ngSwitch]="selection.value">
       <pre *ngSwitchDefault>ng generate component xyz</pre>
