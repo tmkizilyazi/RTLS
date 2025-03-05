@@ -9,6 +9,7 @@ import { ClientBridgeService, ThemeType, ClientConfig } from '@bakelor/iframe-br
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 @NgModule({
   declarations: [
@@ -19,7 +20,8 @@ import { AppComponent } from './app.component';
     AppRoutingModule,
     FormsModule,
     CommonModule,
-    RouterModule
+    RouterModule,
+    BrowserAnimationsModule
   ],
   providers: [ClientBridgeService],
   bootstrap: [AppComponent],
