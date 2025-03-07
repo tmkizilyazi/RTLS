@@ -1,0 +1,30 @@
+/* Tahta dokusunu kullanan CSS sınıfları */
+.table-wood {
+    background-color: #8b5e3c;
+    background-image: url('wood-texture.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), inset 0 5px 15px rgba(255, 255, 255, 0.1);
+    border: 8px solid #5d4037;
+}
+
+.table-wood-light {
+    background-color: #d7bc9d;
+    background-image: url('wood-texture.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), inset 0 5px 15px rgba(255, 255, 255, 0.2);
+    border: 8px solid #ba9b76;
+}
+
+.table-wood-dark {
+    background-color: #5d4037;
+    background-image: url('wood-texture.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 5px 15px rgba(255, 255, 255, 0.05);
+    border: 8px solid #3e2723;
+}
