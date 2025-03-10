@@ -56,6 +56,11 @@ export class AppComponent implements OnInit, OnDestroy {
   iframeData: any = null;
   selectedMaterial: string = 'wood';
   tableHeight: number = 30;
+  iframeBridgeInitialized: boolean = false;
+  isAppReady: boolean = false; // Uygulamanın hazır olup olmadığını takip eder
+  readinessAttempts: number = 0;
+  appInfo: any = null;
+  onAppReadyListeners: ((appInfo: any) => void)[] = [];
 
   materials = [
     { id: 'wood', name: 'Ahşap', color: '#8b5e3c' },
@@ -71,13 +76,44 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // İframe bridge başlatma - otomatik olarak başlat
+    console.log('AppComponent ngOnInit başladı');
     try {
+      console.log('Iframe Bridge başlatılıyor...');
+      // Bridge servisini başlat ve sonucu bekle
       this.bridgeService.initialize(this.clientConfig);
-      this.bridgeService.requestData('getSeatStatus', Date.now().toString());
-      console.log('iframe bridge başarıyla başlatıldı');
+      console.log('Iframe Bridge başarıyla başlatıldı!');
+      this.iframeBridgeInitialized = true;
+
+      // Kanal aboneliklerini kur
+      this.setupChannelSubscriptions();
+
+      // Uygulama hazırlık kontrolünü başlat
+      this.checkAppReadinessAlternative();
+
+      // Eğer 10 saniye içinde alternatif yöntem ile hazırlık tespit edilmezse
+      // ping yöntemini dene
+      setTimeout(() => {
+        if (!this.isAppReady) {
+          console.log('Alternatif hazırlık kontrolü başarısız oldu, ping ile kontrol deneniyor...');
+          this.checkAppReadiness();
+        }
+      }, 10000);
+
+      // Veri almak için istek gönder
+      try {
+        console.log('getSeatStatus veri isteği gönderiliyor...');
+        this.bridgeService.requestData('getSeatStatus', Date.now().toString());
+      } catch (reqError) {
+        console.warn('Veri isteği gönderilemedi, ancak bridge başlatıldı:', reqError);
+      }
     } catch (error) {
-      console.error('iframe bridge başlatılırken hata oluştu:', error);
+      console.error('Iframe Bridge başlatma işlemi sırasında beklenmeyen hata:', error);
+      this.iframeBridgeInitialized = false;
+
+      // Başarısız olsa bile hazırlık kontrolünü dene
+      setTimeout(() => {
+        this.checkAppReadinessAlternative();
+      }, 5000);
     }
 
     // Varsayılan sandalyeleri oluştur - masanın dışına doğru konumlandır
@@ -103,16 +139,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.initializeSeats(defaultSeats);
 
-    // IFrame'den gelen verileri dinle
-    this.bridgeService.subscribeToChannel('serverTime', (data) => {
-      console.log('Server time data:', data);
-    });
-
-    // Sandalye durumlarını dinle
-    this.bridgeService.subscribeToChannel('seatStatus', (data) => {
-      this.iframeData = data;
-      this.updateSeatStatus(data);
-    });
+    // NOT: Kanal abonelikleri artık setupChannelSubscriptions() metodunda merkezileştirilmiştir
+    // Duplicate abonelikler kaldırıldı
   }
 
   ngOnDestroy() {
@@ -127,6 +155,21 @@ export class AppComponent implements OnInit, OnDestroy {
       return profile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      return null;
+    }
+  }
+
+  // Belirli bir kullanıcının detaylarını almak için metot
+  async getUserDetail() {
+    try {
+      const user = await this.bridgeService.callApi('getUserById', {
+        id: '1',
+        includeDetails: true
+      });
+      console.log('User details:', user);
+      return user;
+    } catch (error) {
+      console.error('API error:', error);
       return null;
     }
   }
@@ -492,6 +535,172 @@ export class AppComponent implements OnInit, OnDestroy {
   deleteAllSeats() {
     if (confirm('Tüm sandalyeleri silmek istediğinize emin misiniz?')) {
       this.seats = [];
+    }
+  }
+
+  // Bridge hazır olduğunda bir kanaldan veri alarak app'in hazır olduğunu kontrol edelim
+  checkAppReadiness() {
+    console.log('App hazırlık durumu kontrol ediliyor...');
+
+    // Maksimum deneme sayımız olsun
+    if (!this.readinessAttempts) {
+      this.readinessAttempts = 0;
+    }
+
+    // Maksimum deneme sayısını aşmamalıyız
+    if (this.readinessAttempts > 5) {
+      console.warn('Maksimum app ready kontrolü deneme sayısına ulaşıldı');
+      return;
+    }
+
+    this.readinessAttempts++;
+
+    // Timeout ile uygulamanın hazır olması için bir süre bekleyelim
+    setTimeout(() => {
+      try {
+        // Host uygulamasında kayıtlı olan ping API'sini kullanarak app'in hazır olduğunu doğrulayalım
+        this.bridgeService.callApi('ping', {}).then(
+          (response) => {
+            console.log('Ping yanıtı alındı:', response);
+
+            // Ping yanıtı başarılı ise app'i hazır olarak işaretle
+            this.isAppReady = true;
+
+            // App info için varsayılan değerler oluştur
+            this.appInfo = {
+              version: '1.0.0',
+              appType: 'Host Application',
+              status: 'ready',
+              timeStamp: new Date().toISOString()
+            };
+
+            // App hazır olduğunda event yayınla
+            this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+          },
+          (error) => {
+            console.error('Ping yanıtı alınamadı:', error);
+            // 3 saniye sonra tekrar dene
+            setTimeout(() => this.checkAppReadiness(), 3000);
+          }
+        );
+      } catch (error) {
+        console.error('App hazırlık kontrolünde hata:', error);
+        this.isAppReady = false;
+        // 5 saniye sonra tekrar dene
+        setTimeout(() => this.checkAppReadiness(), 5000);
+      }
+    }, 1000);
+  }
+
+  // App'in hazır olup olmadığını kontrol eden method
+  isAppInfoReady(): boolean {
+    return this.isAppReady;
+  }
+
+  // App hazır olduğunda çağrılacak method
+  onAppReady(callback: (appInfo: any) => void) {
+    if (this.isAppReady) {
+      callback(this.appInfo);
+    } else {
+      // App hazır olduğunda çağrılacak callback'i kaydet
+      this.registerAppReadyListener(callback);
+    }
+  }
+
+  // App hazır olduğunda çağrılacak callback'i kaydet
+  registerAppReadyListener(callback: (appInfo: any) => void) {
+    this.onAppReadyListeners.push(callback);
+  }
+
+  // Alternatif bir yöntemle app hazırlığını kontrol et
+  checkAppReadinessAlternative() {
+    console.log('Alternatif app hazırlık kontrolü başlatılıyor...');
+
+    // İlk olarak en basit yöntem: sandalye durumu kanalına abone ol
+    try {
+      // Sandalye durumlarını dinlemeye çalış
+      const unsubscribe = this.bridgeService.subscribeToChannel('seatStatus', (data) => {
+        console.log('Sandalye durumu kanalından veri alındı, uygulama hazır:', data);
+        this.isAppReady = true;
+
+        // App info için varsayılan değerler oluştur
+        this.appInfo = {
+          version: '1.0.0',
+          appType: 'Host Application',
+          status: 'ready',
+          timeStamp: new Date().toISOString()
+        };
+
+        // Veri alındı ve app hazır
+        this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+
+        // Artık bu işlevi bir daha çağırmayacağız
+        this.readinessAttempts = 6;
+      });
+
+      // 10 saniye içinde veri gelmezse timeout ile tekrar dene
+      setTimeout(() => {
+        if (!this.isAppReady) {
+          console.warn('Sandalye durumu kanalından 10 saniye içinde veri gelmedi');
+          // Ping metodu ile dene
+          this.checkAppReadiness();
+        }
+      }, 10000);
+
+    } catch (error) {
+      console.error('Kanal aboneliğinde hata:', error);
+      // Ping metodu ile dene
+      this.checkAppReadiness();
+    }
+  }
+
+  // Kanal aboneliklerini güvenli bir şekilde kur
+  setupChannelSubscriptions() {
+    try {
+      console.log('Kanal abonelikleri kuruluyor...');
+
+      // Mevcut abonelikleri temizle
+      try {
+        this.bridgeService.unsubscribeFromChannel('seatStatus');
+        this.bridgeService.unsubscribeFromChannel('serverTime');
+      } catch (e) {
+        // Temizleme hatası, devam et
+      }
+
+      // Sandalye durumlarını dinle - Güvenli abonelik
+      try {
+        this.bridgeService.subscribeToChannel('seatStatus', (data) => {
+          console.log('Sandalye durumu kanalından veri alındı:', data);
+          this.iframeData = data;
+          this.updateSeatStatus(data);
+
+          // Veri alındığında uygulama hazır
+          if (!this.isAppReady) {
+            this.isAppReady = true;
+            this.appInfo = {
+              version: '1.0.0',
+              status: 'ready',
+              timeStamp: new Date().toISOString()
+            };
+            this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+          }
+        });
+        console.log('Sandalye durumu kanalına başarıyla abone olundu');
+      } catch (error) {
+        console.error('Sandalye durumu kanalına abone olunamadı:', error);
+      }
+
+      // Sunucu zamanını dinle - Güvenli abonelik
+      try {
+        this.bridgeService.subscribeToChannel('serverTime', (data) => {
+          console.log('Sunucu zamanı kanalından veri alındı:', data);
+        });
+        console.log('Sunucu zamanı kanalına başarıyla abone olundu');
+      } catch (error) {
+        console.error('Sunucu zamanı kanalına abone olunamadı:', error);
+      }
+    } catch (error) {
+      console.error('Kanal abonelikleri kurulurken hata oluştu:', error);
     }
   }
 }
