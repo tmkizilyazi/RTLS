@@ -15,6 +15,18 @@ export interface Seat {
   showInfo?: boolean;
 }
 
+export interface LiveLocation {
+  tagSessionHistoryId: string;
+  zoneDuration: number;
+  distance: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  alert: string;
+  permission: string;
+  zoneId: string;
+  zoneName: string;
+}
+
 export interface Table {
   shape: string;
   size: number;
@@ -37,7 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
     metaTags: [],
     script: { src: '', async: true, name: '', version: '', framework: { name: "Angular", version: '' } } as ScriptInfo,
     timestamp: Date.now(),
-    trustedOrigin: 'http://localhost:4200',
+    trustedOrigin: 'https://next.navizard.bakelor.com',
     poweredByLabel: 'Powered by Bakelor'
   };
 
@@ -61,6 +73,10 @@ export class AppComponent implements OnInit, OnDestroy {
   readinessAttempts: number = 0;
   appInfo: any = null;
   onAppReadyListeners: ((appInfo: any) => void)[] = [];
+
+  // Canlı konum verilerini saklamak için yeni property
+  liveLocationData: LiveLocation | null = null;
+  liveLocationError: string | null = null;
 
   materials = [
     { id: 'wood', name: 'Ahşap', color: '#8b5e3c' },
@@ -90,6 +106,111 @@ export class AppComponent implements OnInit, OnDestroy {
       this.bridgeService.initialize(this.clientConfig);
       console.log('Iframe Bridge başlatma isteği gönderildi');
 
+      // Ping API'sini kaydet
+      this.bridgeService.registerApi(
+        'ping',
+        'Check if the host application is ready',
+        {},
+        { status: 'ok', timestamp: new Date().toISOString() },
+        async () => {
+          return { status: 'ok', timestamp: new Date().toISOString() };
+        }
+      );
+
+      // Canlı konum API'sini kaydet
+      this.bridgeService.registerApi(
+        'get-live-location',
+        'Get live location data for a tag session',
+        {
+          tagSessionHistoryId: {
+            type: 'string',
+            description: 'Tag session history ID',
+            required: true
+          }
+        },
+        {
+          tagSessionHistoryId: '00000000-0000-0000-0000-000000000030',
+          zoneDuration: 3600,
+          distance: 100,
+          firstSeenAt: '2025-04-02T10:24:19.115Z',
+          lastSeenAt: '2025-04-02T10:24:19.115Z',
+          alert: 'none',
+          permission: 'allowed',
+          zoneId: '00000000-0000-0000-0000-000000000031',
+          zoneName: 'Zone Name'
+        },
+        async (params) => {
+          try {
+            // API çağrısı yap
+            const response = await this.bridgeService.callApi('get-live-location', {
+              tagSessionHistoryId: params.tagSessionHistoryId
+            });
+
+            console.log('Canlı konum verisi alındı:', response);
+            return response;
+          } catch (error) {
+            console.error('Canlı konum verisi alınırken hata:', error);
+            throw error;
+          }
+        }
+      );
+
+      // Performans metrikleri API'sini kaydet
+      this.bridgeService.registerApi(
+        'appMetrics',
+        'Get application performance metrics',
+        {
+          startDate: {
+            type: 'string',
+            description: 'Start date (ISO format)',
+            required: true
+          },
+          endDate: {
+            type: 'string',
+            description: 'End date (ISO format)',
+            required: true
+          },
+          metrics: {
+            type: 'array',
+            description: 'Metrics to retrieve',
+            required: false,
+            defaultValue: ['cpu', 'memory', 'network']
+          }
+        },
+        {
+          metrics: {
+            cpu: { average: 45.2, peak: 78.5 },
+            memory: { used: 1240.5, total: 4096, unit: 'MB' },
+            network: { incoming: 1024, outgoing: 512, unit: 'KB/s' }
+          }
+        },
+        async (params) => {
+          return {
+            metrics: {
+              cpu: {
+                average: Math.random() * 100,
+                peak: Math.random() * 100,
+                timestamps: [new Date().toISOString()]
+              },
+              memory: {
+                used: Math.random() * 4096,
+                total: 4096,
+                unit: 'MB'
+              },
+              network: {
+                incoming: Math.random() * 2048,
+                outgoing: Math.random() * 1024,
+                unit: 'KB/s'
+              }
+            },
+            period: {
+              start: params.startDate,
+              end: params.endDate
+            }
+          };
+        }
+      );
+
       // Bridge servisinin başlatılmasını bekle
       setTimeout(() => {
         // Bridge servisini başarıyla başlatıldı olarak işaretle
@@ -100,7 +221,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.setupChannelSubscriptions();
 
         // Uygulama hazırlık kontrolünü başlat
-        this.checkAppReadinessAlternative();
+        this.checkAppReadiness();
 
         // Veri almak için istek gönder
         console.log('getSeatStatus veri isteği gönderiliyor...');
@@ -113,7 +234,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       // Başarısız olsa bile hazırlık kontrolünü dene
       setTimeout(() => {
-        this.checkAppReadinessAlternative();
+        this.checkAppReadiness();
       }, 5000);
     }
 
@@ -173,6 +294,31 @@ export class AppComponent implements OnInit, OnDestroy {
       console.error('API error:', error);
       return null;
     }
+  }
+
+  // Canlı konum verisini al
+  async getLiveLocation(tagSessionHistoryId: string): Promise<LiveLocation | null> {
+    try {
+      this.liveLocationError = null;
+      const locationData = await this.bridgeService.callApi('get-live-location', {
+        tagSessionHistoryId: tagSessionHistoryId
+      });
+
+      console.log('Canlı konum verisi:', locationData);
+      this.liveLocationData = locationData as LiveLocation;
+      return this.liveLocationData;
+    } catch (error) {
+      console.error('Canlı konum verisi alınırken hata:', error);
+      this.liveLocationError = 'Veri alınırken bir hata oluştu';
+      this.liveLocationData = null;
+      return null;
+    }
+  }
+
+  // Test için canlı konum verisi al
+  async testLiveLocation() {
+    const testId = '00000000-0000-0000-0000-000000000030';
+    await this.getLiveLocation(testId);
   }
 
   addTable() {
@@ -543,12 +689,10 @@ export class AppComponent implements OnInit, OnDestroy {
   checkAppReadiness() {
     console.log('App hazırlık durumu kontrol ediliyor...');
 
-    // Maksimum deneme sayımız olsun
     if (!this.readinessAttempts) {
       this.readinessAttempts = 0;
     }
 
-    // Maksimum deneme sayısını aşmamalıyız
     if (this.readinessAttempts > 5) {
       console.warn('Maksimum app ready kontrolü deneme sayısına ulaşıldı');
       return;
@@ -556,41 +700,50 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.readinessAttempts++;
 
-    // Timeout ile uygulamanın hazır olması için bir süre bekleyelim
     setTimeout(() => {
       try {
-        // Host uygulamasında kayıtlı olan ping API'sini kullanarak app'in hazır olduğunu doğrulayalım
-        // ping öncesinde host'un API'yi kaydettiğinden emin olmak için biraz bekleyelim
+        // Host kanalına abone ol
+        this.bridgeService.subscribeToChannel('host', (message) => {
+          console.log('Host kanalından mesaj alındı:', message);
+
+          if (message === 'ready' ||
+            (typeof message === 'object' && message.status === 'ready') ||
+            (typeof message === 'object' && message.type === 'READY')) {
+            console.log('Host uygulaması hazır sinyali alındı');
+            this.isAppReady = true;
+
+            this.appInfo = {
+              version: '1.0.0',
+              appType: 'Host Application',
+              status: 'ready',
+              timeStamp: new Date().toISOString()
+            };
+
+            this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+          }
+        });
+
+        // Sandalye durumu kanalına abone ol
+        this.bridgeService.subscribeToChannel('seatStatus', (data) => {
+          console.log('Sandalye durumu kanalından veri alındı:', data);
+          if (data) {
+            this.isAppReady = true;
+            this.iframeData = data;
+            this.updateSeatStatus(data);
+          }
+        });
+
+        // 15 saniye içinde veri gelmezse tekrar dene
         setTimeout(() => {
-          this.bridgeService.callApi('ping', {}).then(
-            (response) => {
-              console.log('Ping yanıtı alındı:', response);
+          if (!this.isAppReady) {
+            console.warn('15 saniye içinde veri alınamadı, tekrar deneniyor...');
+            this.checkAppReadiness();
+          }
+        }, 15000);
 
-              // Ping yanıtı başarılı ise app'i hazır olarak işaretle
-              this.isAppReady = true;
-
-              // App info için varsayılan değerler oluştur
-              this.appInfo = {
-                version: '1.0.0',
-                appType: 'Host Application',
-                status: 'ready',
-                timeStamp: new Date().toISOString()
-              };
-
-              // App hazır olduğunda event yayınla
-              this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
-            },
-            (error) => {
-              console.error('Ping yanıtı alınamadı:', error);
-              // 3 saniye sonra tekrar dene
-              setTimeout(() => this.checkAppReadiness(), 3000);
-            }
-          );
-        }, 2000); // Host'a API'leri kaydetmek için 2 saniye ek süre ver
       } catch (error) {
         console.error('App hazırlık kontrolünde hata:', error);
         this.isAppReady = false;
-        // 5 saniye sonra tekrar dene
         setTimeout(() => this.checkAppReadiness(), 5000);
       }
     }, 1000);
@@ -717,76 +870,62 @@ export class AppComponent implements OnInit, OnDestroy {
       }
 
       // Host kanalını dinle - ready mesajları için
-      try {
-        console.log('Host kanalına abone olunuyor...');
-        this.bridgeService.subscribeToChannel('host', (message) => {
-          console.log('Host kanalından mesaj alındı:', message);
+      this.bridgeService.subscribeToChannel('host', (message) => {
+        console.log('Host kanalından mesaj alındı:', message);
 
-          // Host'tan ready mesajı geldi mi kontrol et
-          if (message === 'ready' ||
-            (typeof message === 'object' && message.status === 'ready') ||
-            (typeof message === 'object' && message.type === 'READY') ||
-            (typeof message === 'object' &&
-              message.content &&
-              message.content.type === 'host')) {
-            console.log('Host uygulaması hazır sinyali alındı');
-            this.isAppReady = true;
+        // Host'tan ready mesajı geldi mi kontrol et
+        if (message === 'ready' ||
+          (typeof message === 'object' && message.status === 'ready') ||
+          (typeof message === 'object' && message.type === 'READY') ||
+          (typeof message === 'object' &&
+            message.content &&
+            message.content.type === 'host')) {
+          console.log('Host uygulaması hazır sinyali alındı');
+          this.isAppReady = true;
 
-            this.appInfo = {
-              version: '1.0.0',
-              appType: 'Host Application',
-              status: 'ready',
-              timeStamp: new Date().toISOString()
-            };
+          this.appInfo = {
+            version: '1.0.0',
+            appType: 'Host Application',
+            status: 'ready',
+            timeStamp: new Date().toISOString()
+          };
 
-            // Tüm dinleyicileri bilgilendir
-            this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
-          }
-        });
-        console.log('Host kanalına başarıyla abone olundu');
-      } catch (error) {
-        console.error('Host kanalına abone olunamadı:', error);
-      }
+          // Tüm dinleyicileri bilgilendir
+          this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+        }
+      });
 
       // Sandalye durumlarını dinle
-      try {
-        console.log('Sandalye durumu kanalına abone olunuyor...');
-        this.bridgeService.subscribeToChannel('seatStatus', (data) => {
-          console.log('Sandalye durumu kanalından veri alındı:', data);
-          this.iframeData = data;
-          this.updateSeatStatus(data);
+      this.bridgeService.subscribeToChannel('seatStatus', (data) => {
+        console.log('Sandalye durumu kanalından veri alındı:', data);
+        this.iframeData = data;
+        this.updateSeatStatus(data);
 
-          // Veri alındığında uygulama hazır
-          if (!this.isAppReady) {
-            console.log('İlk sandalye durumu verisi alındı, uygulama hazır');
-            this.isAppReady = true;
-            this.appInfo = {
-              version: '1.0.0',
-              status: 'ready',
-              timeStamp: new Date().toISOString()
-            };
-            this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
-          }
-        });
-        console.log('Sandalye durumu kanalına başarıyla abone olundu');
-      } catch (error) {
-        console.error('Sandalye durumu kanalına abone olunamadı:', error);
-      }
+        // Veri alındığında uygulama hazır
+        if (!this.isAppReady) {
+          console.log('İlk sandalye durumu verisi alındı, uygulama hazır');
+          this.isAppReady = true;
+          this.appInfo = {
+            version: '1.0.0',
+            status: 'ready',
+            timeStamp: new Date().toISOString()
+          };
+          this.onAppReadyListeners.forEach(callback => callback(this.appInfo));
+        }
+      });
 
       // Sunucu zamanını dinle
-      try {
-        console.log('Sunucu zamanı kanalına abone olunuyor...');
-        this.bridgeService.subscribeToChannel('serverTime', (data) => {
-          console.log('Sunucu zamanı kanalından veri alındı:', data);
-        });
-        console.log('Sunucu zamanı kanalına başarıyla abone olundu');
-      } catch (error) {
-        console.error('Sunucu zamanı kanalına abone olunamadı:', error);
-      }
+      this.bridgeService.subscribeToChannel('serverTime', (data) => {
+        console.log('Sunucu zamanı kanalından veri alındı:', data);
+      });
 
-      console.log('Tüm kanal abonelikleri tamamlandı');
+      console.log('Tüm kanal abonelikleri başarıyla tamamlandı');
     } catch (error) {
       console.error('Kanal abonelikleri kurulurken hata oluştu:', error);
+      // Hata durumunda 3 saniye sonra tekrar dene
+      setTimeout(() => {
+        this.setupChannelSubscriptions();
+      }, 3000);
     }
   }
 }

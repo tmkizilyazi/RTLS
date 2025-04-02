@@ -1327,6 +1327,40 @@
         <span>3D Görünüm</span>
       </div>
     </div>
+
+    <!-- Canlı Konum Verileri Bölümü -->
+    <div class="live-location-section">
+      <h3>Canlı Konum Verileri</h3>
+      <button (click)="testLiveLocation()">Test Verisi Al</button>
+
+      <div *ngIf="liveLocationError" class="error-message">
+        {{ liveLocationError }}
+      </div>
+
+      <div *ngIf="liveLocationData" class="location-data">
+        <div class="data-item">
+          <strong>Bölge Adı:</strong> {{ liveLocationData.zoneName }}
+        </div>
+        <div class="data-item">
+          <strong>Mesafe:</strong> {{ liveLocationData.distance }} metre
+        </div>
+        <div class="data-item">
+          <strong>Bölge Süresi:</strong> {{ liveLocationData.zoneDuration }} saniye
+        </div>
+        <div class="data-item">
+          <strong>İlk Görülme:</strong> {{ liveLocationData.firstSeenAt | date:'dd/MM/yyyy HH:mm:ss' }}
+        </div>
+        <div class="data-item">
+          <strong>Son Görülme:</strong> {{ liveLocationData.lastSeenAt | date:'dd/MM/yyyy HH:mm:ss' }}
+        </div>
+        <div class="data-item">
+          <strong>Uyarı Durumu:</strong> {{ liveLocationData.alert }}
+        </div>
+        <div class="data-item">
+          <strong>İzin Durumu:</strong> {{ liveLocationData.permission }}
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="dashboard">
