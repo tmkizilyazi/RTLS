@@ -86,6 +86,42 @@ export class AppComponent implements OnInit, OnDestroy {
     { id: 'plastic', name: 'Plastik', color: '#5F9EA0' }
   ];
 
+  // Form için property'ler ekle
+  settingForm: {
+    id: string;
+    primaryKey: string;
+    scope: string;
+    keyGroupTitle: string;
+    keyGroup: string;
+    title: string;
+    description: string;
+    primaryValue: string;
+    defaultValue: string;
+    valueType: string;
+    displayOrder: number;
+    browsable: boolean;
+    externalApplicationId: string;
+  } = {
+      id: '',
+      primaryKey: '',
+      scope: 'system',
+      keyGroupTitle: '',
+      keyGroup: '',
+      title: '',
+      description: '',
+      primaryValue: '',
+      defaultValue: '',
+      valueType: 'string',
+      displayOrder: 1,
+      browsable: true,
+      externalApplicationId: ''
+    };
+
+  settingResponse: any = null;
+  settingError: string | null = null;
+  tagTypeResponse: any = null;
+  tagTypeError: string | null = null;
+
   constructor(private bridgeService: ClientBridgeService) {
     this.selectedShape = 'rectangle';
     this.getUserProfile();
@@ -105,6 +141,11 @@ export class AppComponent implements OnInit, OnDestroy {
       // Bridge servisini başlat
       this.bridgeService.initialize(this.clientConfig);
       console.log('Iframe Bridge başlatma isteği gönderildi');
+
+      // API çağrılarını otomatik olarak yap
+      setTimeout(() => {
+        this.performApiCalls();
+      }, 2000);
 
       // get-setting API'sini kaydet
       this.bridgeService.registerApi(
@@ -709,7 +750,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.isAppReady) {
       callback(this.appInfo);
     } else {
-      // App hazır olduğunda çağrılacak callback'i kaydet
+      // App hazır olana kadar callback'i kaydet
       this.registerAppReadyListener(callback);
     }
   }
@@ -811,5 +852,230 @@ export class AppComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Kanal abonelikleri kurulurken hata oluştu:', error);
     }
+  }
+
+  // Create External Application Setting API metodu
+  createExternalApplicationSetting(setting: {
+    primaryKey: string;
+    scope: string;
+    keyGroupTitle: string;
+    keyGroup: string;
+    title: string;
+    description: string;
+    primaryValue: string;
+    defaultValue: string;
+    valueType: string;
+    displayOrder: number;
+    browsable: boolean;
+    externalApplicationId: string;
+  }): Promise<any> {
+    console.log('createExternalApplicationSetting çağrılıyor:', setting);
+    return this.bridgeService.callApi('create-external-application-setting', { setting });
+  }
+
+  // Save External Application Setting API metodu
+  saveExternalApplicationSetting(setting: {
+    id: string;
+    primaryKey: string;
+    scope: string;
+    keyGroupTitle: string;
+    keyGroup: string;
+    title: string;
+    description: string;
+    primaryValue: string;
+    defaultValue: string;
+    valueType: string;
+    displayOrder: number;
+    browsable: boolean;
+    externalApplicationId: string;
+  }): Promise<any> {
+    console.log('saveExternalApplicationSetting çağrılıyor:', setting);
+    return this.bridgeService.callApi('save-external-application-setting', { setting });
+  }
+
+  // Get Tag Type API metodu
+  getTagType(id?: string): Promise<any> {
+    console.log('getTagType çağrılıyor, id:', id);
+    const params = id ? { id } : {};
+    return this.bridgeService.callApi('get-tag-type', params);
+  }
+
+  // Form gönderme fonksiyonu
+  submitSettingForm() {
+    // API yanıtlarını sıfırla
+    this.settingResponse = null;
+    this.settingError = null;
+
+    // Form validasyonu
+    if (!this.settingForm.primaryKey) {
+      this.settingError = 'Primary Key alanı zorunludur.';
+      return;
+    }
+
+    if (!this.settingForm.keyGroupTitle) {
+      this.settingError = 'Key Group Title alanı zorunludur.';
+      return;
+    }
+
+    if (!this.settingForm.keyGroup) {
+      this.settingError = 'Key Group alanı zorunludur.';
+      return;
+    }
+
+    console.log('Ayar form verisi:', this.settingForm);
+
+    // ID varsa güncelleme, yoksa oluşturma işlemi yap
+    const apiCall = this.settingForm.id ?
+      this.saveExternalApplicationSetting(this.settingForm) :
+      this.createExternalApplicationSetting(this.settingForm);
+
+    apiCall
+      .then(response => {
+        console.log('Ayar başarıyla işlendi:', response);
+        this.settingResponse = response;
+
+        // Create işleminden sonra ID'yi form değerine ata
+        if (!this.settingForm.id && response.id) {
+          this.settingForm.id = response.id;
+        }
+      })
+      .catch(error => {
+        console.error('Ayar işleme hatası:', error);
+        this.settingError = 'API hatası: ' + (error.message || JSON.stringify(error));
+      });
+  }
+
+  // ToF Sensor tag tipini al
+  getToFSensorTagType() {
+    this.tagTypeResponse = null;
+    this.tagTypeError = null;
+
+    this.getTagType()
+      .then(response => {
+        console.log('Tag tipi başarıyla alındı:', response);
+
+        if (Array.isArray(response)) {
+          // Eğer birden fazla tag tipi dönerse, "ToF Sensor" isimli olanı bul
+          const tofSensorTag = response.find(tag => tag.name.includes('ToF') || tag.name.includes('Sensor'));
+          if (tofSensorTag) {
+            this.tagTypeResponse = tofSensorTag;
+          } else {
+            this.tagTypeResponse = response;
+          }
+        } else {
+          this.tagTypeResponse = response;
+        }
+      })
+      .catch(error => {
+        console.error('Tag tipi alma hatası:', error);
+        this.tagTypeError = 'API hatası: ' + (error.message || JSON.stringify(error));
+      });
+  }
+
+  // API çağrılarını otomatik olarak yap
+  performApiCalls() {
+    console.log('Otomatik API çağrıları başlatılıyor...');
+
+    // 1. Önce External Application Setting oluştur
+    this.settingForm = {
+      id: '',
+      primaryKey: 'App.Configuration.Settings',
+      scope: 'system',
+      keyGroupTitle: 'Application',
+      keyGroup: 'Configuration',
+      title: 'Uygulama Yapılandırma Ayarları',
+      description: 'RTLS uygulaması için yapılandırma ayarları',
+      primaryValue: 'RTLS-Config-01',
+      defaultValue: 'Default-Config',
+      valueType: 'string',
+      displayOrder: 1,
+      browsable: true,
+      externalApplicationId: 'rtls-app-id'
+    };
+
+    console.log('1. External Application Setting oluşturuluyor...');
+    this.createExternalApplicationSetting(this.settingForm)
+      .then(response => {
+        console.log('Ayar başarıyla oluşturuldu:', response);
+        this.settingResponse = response;
+
+        // Create işleminden sonra ID'yi form değerine ata
+        if (response && response.id) {
+          this.settingForm.id = response.id;
+          console.log('Ayar ID\'si alındı:', this.settingForm.id);
+
+          // 2. Oluşturulan ayarı güncelle
+          setTimeout(() => this.updateCreatedSetting(), 2000);
+        } else {
+          console.error('Oluşturulan ayardan ID alınamadı');
+
+          // Yine de tag tipi alınmayı dene
+          setTimeout(() => this.getToFSensorTag(), 2000);
+        }
+      })
+      .catch(error => {
+        console.error('Ayar oluşturma hatası:', error);
+        this.settingError = 'API hatası: ' + (error.message || JSON.stringify(error));
+
+        // Hataya rağmen tag tipi alınmayı dene
+        setTimeout(() => this.getToFSensorTag(), 2000);
+      });
+  }
+
+  // Oluşturulan ayarı güncelle
+  updateCreatedSetting() {
+    console.log('2. Oluşturulan ayar güncelleniyor...');
+
+    // Primary Value'yu güncelle
+    this.settingForm.primaryValue = 'RTLS-Config-Updated-' + new Date().getTime();
+
+    this.saveExternalApplicationSetting(this.settingForm)
+      .then(response => {
+        console.log('Ayar başarıyla güncellendi:', response);
+        this.settingResponse = response;
+
+        // 3. ToF Sensor tag tipini al
+        setTimeout(() => this.getToFSensorTag(), 2000);
+      })
+      .catch(error => {
+        console.error('Ayar güncelleme hatası:', error);
+        this.settingError = 'API hatası: ' + (error.message || JSON.stringify(error));
+
+        // Hataya rağmen tag tipi alınmayı dene
+        setTimeout(() => this.getToFSensorTag(), 2000);
+      });
+  }
+
+  // ToF Sensor tag tipini al
+  getToFSensorTag() {
+    console.log('3. ToF Sensor tag tipi alınıyor...');
+
+    this.getTagType()
+      .then(response => {
+        console.log('Tag tipi başarıyla alındı:', response);
+        this.tagTypeResponse = response;
+
+        if (Array.isArray(response)) {
+          // Eğer birden fazla tag tipi dönerse, "ToF" veya "Sensor" içeren tag'i bul
+          const tofSensorTag = response.find(tag =>
+            tag.name && (tag.name.includes('ToF') || tag.name.includes('Sensor'))
+          );
+
+          if (tofSensorTag) {
+            console.log('ToF Sensor tag\'i bulundu:', tofSensorTag);
+            this.tagTypeResponse = tofSensorTag;
+          } else {
+            console.log('ToF Sensor tag\'i bulunamadı, tüm tag\'ler:', response);
+          }
+        } else if (response && response.name) {
+          console.log('Tek tag tipi alındı:', response);
+        } else {
+          console.log('Beklenmeyen API yanıtı:', response);
+        }
+      })
+      .catch(error => {
+        console.error('Tag tipi alma hatası:', error);
+        this.tagTypeError = 'API hatası: ' + (error.message || JSON.stringify(error));
+      });
   }
 }

@@ -896,3 +896,95 @@
     }
   }
 }
+
+/* Ayar Form Stilleri */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.2);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.action-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex: 1;
+}
+
+.action-button:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.action-button.clear-btn {
+  background-color: #e74c3c;
+}
+
+.action-button.clear-btn:hover {
+  background-color: #c0392b;
+}
+
+.response-box,
+.error-box {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.response-box {
+  background-color: #e8f7f0;
+  border: 1px solid #2ecc71;
+}
+
+.error-box {
+  background-color: #fdedee;
+  border: 1px solid #e74c3c;
+}
+
+.response-box h5,
+.error-box h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.response-box pre {
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 10px;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 12px;
+}

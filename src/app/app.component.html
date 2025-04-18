@@ -1361,6 +1361,128 @@
         </div>
       </div>
     </div>
+
+    <!-- Uygulama Ayarı Oluşturma Formu -->
+    <div class="sidebar-section">
+      <h4>Uygulama Ayarı Oluştur/Güncelle</h4>
+
+      <div class="form-group" *ngIf="settingForm.id">
+        <label for="id">ID:</label>
+        <input type="text" id="id" class="form-control" [(ngModel)]="settingForm.id" readonly>
+      </div>
+
+      <div class="form-group">
+        <label for="primaryKey">Primary Key:</label>
+        <input type="text" id="primaryKey" class="form-control" [(ngModel)]="settingForm.primaryKey"
+          placeholder="örn: General.App.Name">
+      </div>
+
+      <div class="form-group">
+        <label for="scope">Scope:</label>
+        <input type="text" id="scope" class="form-control" [(ngModel)]="settingForm.scope" placeholder="örn: system">
+      </div>
+
+      <div class="form-group">
+        <label for="keyGroupTitle">Key Group Title:</label>
+        <input type="text" id="keyGroupTitle" class="form-control" [(ngModel)]="settingForm.keyGroupTitle"
+          placeholder="örn: General">
+      </div>
+
+      <div class="form-group">
+        <label for="keyGroup">Key Group:</label>
+        <input type="text" id="keyGroup" class="form-control" [(ngModel)]="settingForm.keyGroup" placeholder="örn: App">
+      </div>
+
+      <div class="form-group">
+        <label for="title">Title:</label>
+        <input type="text" id="title" class="form-control" [(ngModel)]="settingForm.title"
+          placeholder="örn: New Setting">
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description:</label>
+        <input type="text" id="description" class="form-control" [(ngModel)]="settingForm.description"
+          placeholder="örn: Description">
+      </div>
+
+      <div class="form-group">
+        <label for="primaryValue">Primary Value:</label>
+        <input type="text" id="primaryValue" class="form-control" [(ngModel)]="settingForm.primaryValue"
+          placeholder="örn: Value">
+      </div>
+
+      <div class="form-group">
+        <label for="defaultValue">Default Value:</label>
+        <input type="text" id="defaultValue" class="form-control" [(ngModel)]="settingForm.defaultValue"
+          placeholder="örn: Default">
+      </div>
+
+      <div class="form-group">
+        <label for="valueType">Value Type:</label>
+        <input type="text" id="valueType" class="form-control" [(ngModel)]="settingForm.valueType"
+          placeholder="örn: string">
+      </div>
+
+      <div class="form-group">
+        <label for="displayOrder">Display Order:</label>
+        <input type="number" id="displayOrder" class="form-control" [(ngModel)]="settingForm.displayOrder"
+          placeholder="örn: 1">
+      </div>
+
+      <div class="form-group">
+        <label for="browsable">Browsable:</label>
+        <select id="browsable" class="form-control" [(ngModel)]="settingForm.browsable">
+          <option [ngValue]="true">Evet</option>
+          <option [ngValue]="false">Hayır</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="externalApplicationId">External Application ID:</label>
+        <input type="text" id="externalApplicationId" class="form-control"
+          [(ngModel)]="settingForm.externalApplicationId" placeholder="örn: app-id">
+      </div>
+
+      <div class="form-actions">
+        <button class="action-button" (click)="submitSettingForm()">
+          {{ settingForm.id ? 'Ayarı Güncelle' : 'Ayar Oluştur' }}
+        </button>
+
+        <button *ngIf="settingForm.id" class="action-button clear-btn" (click)="settingForm.id = ''">
+          Yeni Ayar
+        </button>
+      </div>
+
+      <div *ngIf="settingResponse" class="response-box">
+        <h5>API Yanıtı:</h5>
+        <pre>{{ settingResponse | json }}</pre>
+      </div>
+
+      <div *ngIf="settingError" class="error-box">
+        <h5>Hata:</h5>
+        <p>{{ settingError }}</p>
+      </div>
+    </div>
+
+    <!-- Tag Tipi Bölümü -->
+    <div class="sidebar-section">
+      <h4>Tag Tipi Bilgisi</h4>
+      <div class="form-actions">
+        <button class="action-button" (click)="getToFSensorTagType()">
+          ToF Sensor Tag Tipini Al
+        </button>
+      </div>
+
+      <div *ngIf="tagTypeResponse" class="response-box">
+        <h5>Tag Tipi:</h5>
+        <pre>{{ tagTypeResponse | json }}</pre>
+      </div>
+
+      <div *ngIf="tagTypeError" class="error-box">
+        <h5>Hata:</h5>
+        <p>{{ tagTypeError }}</p>
+      </div>
+    </div>
   </div>
 
   <div class="dashboard">
